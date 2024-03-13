@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 import numpy as np
+import re
 
 
 def parse_glove_data(filepath):
@@ -26,6 +27,18 @@ def parse_glove_data(filepath):
             embeddings_index[word] = coefs
 
     return embeddings_index
+
+def get_words_array(embeddings_index):
+    return np.array(list(embeddings_index.keys()))
+
+def filter_alphabetic(words_array):
+    pattern = re.compile(r'^[a-z]+$')
+    return np.array([x for x in words_array if pattern.match(x)])
+
+def filter_20k(words_array, filepath_20k):
+    with open(filepath_20k, "r") as file:
+        top_20k = file.read().splitlines()
+    return np.intersect1d(words_array, top_20k)
 
 
 @click.command()
