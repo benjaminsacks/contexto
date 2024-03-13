@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 import numpy as np
+import pandas as pd
 import re
 
 
@@ -39,6 +40,14 @@ def filter_20k(words_array, filepath_20k):
     with open(filepath_20k, "r") as file:
         top_20k = file.read().splitlines()
     return np.intersect1d(words_array, top_20k)
+
+def embeddings_to_dataframe(embeddings_index, words_array=None):
+    if words_array is None:
+        return pd.DataFrame.from_dict(embeddings_index, orient="index")
+    else:
+        filtered_embeddings = {word: embeddings_index[word] for word in words_array if word in embeddings_index}
+        return pd.DataFrame.from_dict(filtered_embeddings, orient="index")
+
 
 
 @click.command()
