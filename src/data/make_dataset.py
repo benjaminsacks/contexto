@@ -8,8 +8,11 @@ import numpy as np
 import pandas as pd
 import re
 
+from tqdm import tqdm
 
-def parse_glove_data(filepath):
+GLOVE_LENGTH = 400_000
+
+def parse_glove_data(filepath, progress_bar=False):
     """
     Parse GloVe embedding data from a text file.
 
@@ -22,10 +25,16 @@ def parse_glove_data(filepath):
     embeddings_index = {}
 
     with open(filepath, encoding="utf8") as f:
-        for line in f:
-            word, coefs = line.split(maxsplit=1)
-            coefs = np.fromstring(coefs, "f", sep=" ")
-            embeddings_index[word] = coefs
+        if not progress_bar:
+            for line in f:
+                word, coefs = line.split(maxsplit=1)
+                coefs = np.fromstring(coefs, "f", sep=" ")
+                embeddings_index[word] = coefs
+        else:
+            for line in tqdm(f, desc='Reading file', unit='line', total=GLOVE_LENGTH):
+                word, coefs = line.split(maxsplit=1)
+                coefs = np.fromstring(coefs, "f", sep=" ")
+                embeddings_index[word] = coefs
 
     return embeddings_index
 
