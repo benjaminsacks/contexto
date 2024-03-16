@@ -7,6 +7,29 @@ from tqdm import tqdm
 DATASET_OPTIONS = ["50", "100", "200", "300"]
 
 
+def _cosine_similarity(a, b):
+    """
+    Calculate the cosine similarity between two vectors.
+
+    Parameters:
+    - a (numpy.array): First vector.
+    - b (numpy.array): Second vector.
+
+    Returns:
+    - float: Cosine similarity score between the two vectors.
+    """
+    dot_product = np.dot(a, b)
+    norm_a = np.linalg.norm(a)
+    norm_b = np.linalg.norm(b)
+    if norm_a == 0 or norm_b == 0:
+        return 0  # Handling division by zero
+    return dot_product / (norm_a * norm_b)
+
+
+def _get_similarities_series(glove_df, vector):
+    return glove_df.apply(lambda row: _cosine_similarity(row, vector), axis=1)
+
+
 def _random_similar_word(word, glove_df, similarity_threshold=200):
     """
     Get a random word similar to the given word from a GloVe embeddings DataFrame.
@@ -19,7 +42,8 @@ def _random_similar_word(word, glove_df, similarity_threshold=200):
     Returns:
     - str: A random word similar to the given word.
     """
-    sorted_similarities = np.dot(glove_df, glove_df.loc[word]).argsort()[::-1]
+    similarities = _get_similarities_series(glove_df, glove_df.loc[word])
+    sorted_similarities = similarities.argsort()[::-1]
     filtered_glove = glove_df.index[sorted_similarities[1 : similarity_threshold + 1]]
     similar_word = np.random.choice(filtered_glove)
     return similar_word
@@ -42,7 +66,7 @@ def _pick_final_word(
     - str: The final word selected for the equation.
     """
     equation_words = [starting_word] + list(intermediate_words)
-    sorted_glove_indices = np.dot(glove_df, result_vector).argsort()[::-1]
+    sorted_glove_indices = _get_similarities_series(glove_df, result_vector).argsort()[::-1]
     closest_words = glove_df.index[sorted_glove_indices[: num_operations + 2]]
 
     for final_word in closest_words:
@@ -102,13 +126,16 @@ def simulate_game(glove_df, num_operations):
     final_word = _pick_final_word(
         result_vector, starting_word, intermediate_words, glove_df, num_operations
     )
-    similarity = np.dot(glove_df.loc[final_word], result_vector)
+    similarity = _cosine_similarity(glove_df.loc[final_word], result_vector)
 
     return similarity, _equation_to_string(
         starting_word, intermediate_words, final_word, operations
     )
 
-def batch_simulations(threshold, num_results, output_filepath, glove_df, num_operations):
+
+def batch_simulations(
+    threshold, num_results, output_filepath, glove_df, num_operations
+):
     """
     Perform batch simulations of word-based games using GloVe embeddings.
 
@@ -135,6 +162,7 @@ def batch_simulations(threshold, num_results, output_filepath, glove_df, num_ope
     sorted_results = results_df.sort_values(by="similarity", ascending=False)
     sorted_results.to_csv(output_filepath)
 
+
 @click.command()
 @click.argument("dimensions", type=click.Choice(DATASET_OPTIONS))
 @click.argument("output_filepath", type=click.Path())
@@ -154,11 +182,13 @@ def main(dimensions, output_filepath):
 
     batch_simulations(30, 100, output_filepath, glove_df, 2)
 
+
 if __name__ == "__main__":
     import sys
     import os
 
     sys.path.append(os.getcwd())
     from src.data import make_dataset
+
     # python "c:/Users/nadob/Documents/Personal/Personal Projects/contexto/src/simulations/run_simulations.py" 300 .\data\processed\results.csv
     main()
