@@ -8,6 +8,17 @@ DATASET_OPTIONS = ["50", "100", "200", "300"]
 
 
 def _random_similar_word(word, glove_df, similarity_threshold=200):
+    """
+    Get a random word similar to the given word from a GloVe embeddings DataFrame.
+
+    Parameters:
+    - word (str): The word to find similar words to.
+    - glove_df (pandas.DataFrame): DataFrame containing GloVe embeddings with words as index.
+    - similarity_threshold (int): The maximum number of similar words to consider.
+
+    Returns:
+    - str: A random word similar to the given word.
+    """
     sorted_similarities = np.dot(glove_df, glove_df.loc[word]).argsort()[::-1]
     filtered_glove = glove_df.index[sorted_similarities[1 : similarity_threshold + 1]]
     similar_word = np.random.choice(filtered_glove)
@@ -17,6 +28,19 @@ def _random_similar_word(word, glove_df, similarity_threshold=200):
 def _pick_final_word(
     result_vector, starting_word, intermediate_words, glove_df, num_operations
 ):
+    """
+    Pick a final word for an equation generated using word vectors.
+
+    Parameters:
+    - result_vector (numpy.array): Resultant vector of the equation.
+    - starting_word (str): The starting word of the equation.
+    - intermediate_words (list of str): List of intermediate words used in the equation.
+    - glove_df (pandas.DataFrame): DataFrame containing GloVe embeddings with words as index.
+    - num_operations (int): Number of operations in the equation.
+
+    Returns:
+    - str: The final word selected for the equation.
+    """
     equation_words = [starting_word] + list(intermediate_words)
     sorted_glove_indices = np.dot(glove_df, result_vector).argsort()[::-1]
     closest_words = glove_df.index[sorted_glove_indices[: num_operations + 2]]
@@ -28,6 +52,18 @@ def _pick_final_word(
 
 
 def _equation_to_string(starting_word, intermediate_words, final_word, operations):
+    """
+    Convert an equation represented by its components into a string format.
+
+    Parameters:
+    - starting_word (str): The starting word of the equation.
+    - intermediate_words (list of str): List of intermediate words used in the equation.
+    - final_word (str): The final word of the equation.
+    - operations (list of int): List of operations (+1 for addition, -1 for subtraction).
+
+    Returns:
+    - str: The equation string in the format "starting_word + intermediate_word1 - intermediate_word2 = final_word".
+    """
     equation_string = starting_word
 
     for i, operation in enumerate(operations):
@@ -38,6 +74,17 @@ def _equation_to_string(starting_word, intermediate_words, final_word, operation
 
 
 def simulate_game(glove_df, num_operations):
+    """
+    Simulate a word-based game using GloVe embeddings.
+
+    Parameters:
+    - glove_df (pandas.DataFrame): DataFrame containing GloVe embeddings with words as index.
+    - num_operations (int): Number of operations to perform in the game.
+
+    Returns:
+    - tuple: A tuple containing the similarity score between the final word and the result vector,
+             and the equation string representing the game.
+    """
     starting_word = np.random.choice(glove_df.index)
     intermediate_words = np.array(
         [
@@ -62,6 +109,19 @@ def simulate_game(glove_df, num_operations):
     )
 
 def batch_simulations(threshold, num_results, output_filepath, glove_df, num_operations):
+    """
+    Perform batch simulations of word-based games using GloVe embeddings.
+
+    Parameters:
+    - threshold (float): Minimum similarity score for considering a game result.
+    - num_results (int): Number of simulation results to generate.
+    - output_filepath (str): Filepath to save the results.
+    - glove_df (pandas.DataFrame): DataFrame containing GloVe embeddings with words as index.
+    - num_operations (int): Number of operations to perform in each game.
+
+    Returns:
+    - None
+    """
     simulation_results = []
 
     with tqdm(total=num_results, desc="Equations found") as pbar:
