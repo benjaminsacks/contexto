@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+SIMILARITY_THRESHOLD = 100
 DATASET_OPTIONS = ["50", "100", "200", "300"]
 
 
@@ -12,35 +13,39 @@ def _euclidean_distance(a, b):
 
 
 def _get_distances_series(glove_df, vector):
+    # TODO : Combine with _euclidean_distance using series=TRUE argument
     return np.sqrt(np.sum(np.square(glove_df - vector), axis=1))
 
-
-def _random_similar_word(word, glove_df, similarity_threshold=200):
+def _filter_similar_words(word, glove_df, similarity_threshold=SIMILARITY_THRESHOLD):
     distances = _get_distances_series(glove_df, glove_df.loc[word])
     sorted_distances = distances.sort_values()
     smallest_distances = sorted_distances.iloc[1 : similarity_threshold + 1]
+    return glove_df.loc[smallest_distances.index]
+
+def _random_similar_word(word, glove_df, similarity_threshold=SIMILARITY_THRESHOLD):
+    
+    
     similar_word = np.random.choice(smallest_distances.index)
     return similar_word
 
-def _get_result_vector():
-    # TODO Create function
-    ...
 
-
-def _pick_final_word(
-    result_vector, starting_word, intermediate_words, glove_df, num_operations
-):
-    # TODO : Simplify function, lessen arguments, pick from filtered group of words
-    equation_words = [starting_word] + list(intermediate_words)
-    sorted_glove_indices = (
-        _get_distances_series(glove_df, result_vector).sort_values().index
+def _get_result_vector(starting_word, intermediate_words, operations, glove_df):
+    intermediate_embeddings_matrix = np.array(
+        [glove_df.loc[word] for word in intermediate_words]
     )
-    closest_words = sorted_glove_indices[: num_operations + 2]
+    embeddings_dot_operations = np.dot(operations, intermediate_embeddings_matrix)
+    return glove_df.loc[starting_word] + embeddings_dot_operations
+
+
+def _pick_final_word(result_vector, used_words, glove_df):
+    # TODO : Simplify function, lessen arguments, pick from filtered group of words
+    sorted_distances = _get_distances_series(glove_df, result_vector).sort_values()
+    sorted_words = sorted_distances.index
+    closest_words = sorted_words[: len(used_words) + 1]
 
     for final_word in closest_words:
-        if final_word not in equation_words:
+        if final_word not in used_words:
             return final_word
-    return "ERROR: WORD NOT FOUND"
 
 
 def _equation_to_string(starting_word, intermediate_words, final_word, operations):
@@ -58,21 +63,16 @@ def simulate_game(glove_df, num_operations):
     starting_word = np.random.choice(glove_df.index)
 
     intermediate_words = np.array(
-        [
-            _random_similar_word(starting_word, glove_df, 100)
-            for _ in range(num_operations)
-        ]
+        [_random_similar_word(starting_word, glove_df) for _ in range(num_operations)]
     )
     operations = np.random.choice([-1, 1], size=num_operations)
 
-    factor_matrix = np.array([glove_df.loc[word] for word in intermediate_words])
-    factors_x_operations = np.dot(operations, factor_matrix)
-
-    result_vector = glove_df.loc[starting_word] + factors_x_operations
-
-    final_word = _pick_final_word(
-        result_vector, starting_word, intermediate_words, glove_df, num_operations
+    result_vector = _get_result_vector(
+        starting_word, intermediate_words, operations, glove_df
     )
+
+    used_words = [starting_word] + intermediate_words.tolist()
+    final_word = _pick_final_word(result_vector, used_words, glove_df)
     similarity = _euclidean_distance(glove_df.loc[final_word], result_vector)
 
     return similarity, _equation_to_string(
@@ -102,11 +102,12 @@ def batch_simulations(
 @click.argument("dimensions", type=click.Choice(DATASET_OPTIONS))
 @click.argument("output_filepath", type=click.Path())
 def main(dimensions, output_filepath):
-    path_to_glove_pkl = ".\\data\\interim\\filtered_embeddings.pkl" # TODO : Add to .env
+    path_to_glove_pkl = (
+        ".\\data\\interim\\filtered_embeddings.pkl"  # TODO : Add to .env
+    )
     if not os.path.exists(path_to_glove_pkl):
         make_dataset.main(dimensions)
     glove_df = pd.read_pickle(path_to_glove_pkl)
-        
 
     batch_simulations(30, 100, output_filepath, glove_df, 2)
 
