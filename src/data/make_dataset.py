@@ -40,19 +40,19 @@ def parse_glove_data(filepath, progress_bar=False):
     return embeddings_index
 
 
-def get_words_array(embeddings_index):
-    return np.array(list(embeddings_index.keys()))
+def get_word_list(embeddings_index):
+    return list(embeddings_index.keys())
 
 
-def filter_alphabetic(words_array):
+def filter_alphabetic(word_list):
     pattern = re.compile(r"^[a-z]+$")
-    return np.array([x for x in words_array if pattern.match(x)])
+    return [x for x in word_list if pattern.match(x)]
 
 
-def filter_20k(words_array, filepath_20k):
+def filter_20k(word_list, filepath_20k):
     with open(filepath_20k, "r") as file:
         top_20k = file.read().splitlines()
-    return np.intersect1d(words_array, top_20k)
+    return np.intersect1d(word_list, top_20k)
 
 
 def embeddings_to_dataframe(embeddings_index, words_array=None):
@@ -78,7 +78,7 @@ def main(dimensions):
     embeddings_index = parse_glove_data(
         f".\\data\\raw\\glove.6B.{dimensions}d.txt", progress_bar=True
     )
-    words_array = get_words_array(embeddings_index)
+    words_array = get_word_list(embeddings_index)
     words_array = filter_alphabetic(words_array)
     words_array = filter_20k(words_array, ".\\data\\external\\20k.txt")
 
