@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import click
 import logging
+from tqdm import tqdm
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
@@ -8,11 +9,12 @@ import numpy as np
 import pandas as pd
 import re
 
-from tqdm import tqdm
+from nltk.corpus import wordnet
+from nltk.stem import WordNetLemmatizer
 
 GLOVE_LENGTH = 400_000
 
-
+#TODO : Add word list option to not read whole file each time
 def parse_glove_data(filepath, progress_bar=False):
     """
     Parse GloVe embedding data from a text file.
@@ -54,6 +56,19 @@ def filter_20k(word_list, filepath_20k):
         top_20k = file.read().splitlines()
     return np.intersect1d(word_list, top_20k)
 
+def filter_wordnet(word_list):
+    return [w for w in word_list if len(wordnet.synsets(w)) > 0]
+
+def lemmatize_words(word_list):
+    wnl = WordNetLemmatizer()
+    lemmatized_set = set()
+
+    for word in word_list:
+        word_lemma_list = [wnl.lemmatize(word, pos=p) for p in "nvars"]
+        lemmatized_set.add(min(word_lemma_list, key=len))
+
+    return list(lemmatized_set)
+
 
 def embeddings_to_dataframe(embeddings_index, words_array=None):
     if words_array is None:
@@ -81,6 +96,8 @@ def main(dimensions):
     words_array = get_word_list(embeddings_index)
     words_array = filter_alphabetic(words_array)
     words_array = filter_20k(words_array, ".\\data\\external\\20k.txt")
+    words_array = filter_wordnet(words_array)
+    words_array = lemmatize_words(words_array)
 
     glove_df = embeddings_to_dataframe(embeddings_index, words_array)
     glove_df.to_pickle(path_to_glove_pkl)
@@ -98,4 +115,4 @@ if __name__ == "__main__":
     # load up the .env entries as environment variables
     load_dotenv(find_dotenv())
 
-    main()
+    main(300)
