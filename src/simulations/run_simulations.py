@@ -1,13 +1,14 @@
-import click
+from pathlib import Path
+import sys, os
+project_dir = Path(__file__).resolve().parents[2]
+sys.path.append(str(project_dir))
+
+from src.data import make_dataset
+from config import *
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-
-DATASET_OPTIONS = ["50", "100", "200", "300"]
-SIMILARITY_THRESHOLD = 100
-DISTANCE_THRESHOLD = 8.0
-NUM_RESULTS = 100
 
 # TODO : Add type hints to functions
 # TODO : Add docstrings to functions
@@ -103,26 +104,13 @@ def batch_simulations(
     sorted_results.to_csv(output_filepath)
 
 
-@click.command()
-@click.argument("dimensions", type=click.Choice(DATASET_OPTIONS))
-@click.argument("output_filepath", type=click.Path())
-def main(dimensions, output_filepath):
-    path_to_glove_pkl = (
-        ".\\data\\interim\\filtered_embeddings.pkl"  # TODO : Add to .env
-    )
-    if not os.path.exists(path_to_glove_pkl):
-        make_dataset.main(dimensions)
-    glove_df = pd.read_pickle(path_to_glove_pkl)
+def main():
+    if not os.path.exists(FILTERED_FILEPATH):
+        make_dataset.main()
+    glove_df = pd.read_pickle(FILTERED_FILEPATH)
 
-    batch_simulations(glove_df, 2, output_filepath)
+    batch_simulations(glove_df, 2, OUTPUT_FILEPATH)
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-
-    sys.path.append(os.getcwd())
-    from src.data import make_dataset
-
-    # python "c:/Users/nadob/Documents/Personal/Personal Projects/contexto/src/simulations/run_simulations.py" 300 .\data\processed\results.csv
     main()
